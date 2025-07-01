@@ -1,0 +1,371 @@
+---
+title: "Hướng dẫn SDK MPT WEB"
+description: "MPT SDK cho React (CSR), Vue (CSR) và JavaScript thuần với hỗ trợ đầy đủ cho cuộc gọi audio/video"
+---
+
+# MPT SDK WEB Documentation
+
+## 📦 Cài đặt
+
+```
+npm install @mptransformation/omisdk
+# hoặc
+yarn add @mptransformation/omisdk
+```
+
+## ✨ Tính năng chính
+
+- ✅ **SIP Registration**: Đăng ký với SIP server
+- ✅ **Call Management**: Thực hiện/nhận cuộc gọi audio/video
+- ✅ **Call Controls**: Hold, mute, DTMF, end call
+- ✅ **TypeScript Support**: Full type safety
+- ✅ **Event System**: Comprehensive event handling
+
+## 🚀 Hướng dẫn sử dụng
+
+### 1. Chuẩn bị HTML
+
+Tạo các element cần thiết trong file `index.html`:
+
+```
+<!-- Element chứa UI bubble -->
+<div id="call-manager"></div>
+
+<!-- Audio elements -->
+<audio id="audio1"></audio>
+<audio id="audio2"></audio>
+<audio id="audio3"></audio>
+<audio id="audio4"></audio>
+<audio id="audio5"></audio>
+<audio id="audio6"></audio>
+<audio id="audio7"></audio>
+
+<!-- Video elements -->
+<div>
+  <video id="local" title="local video" muted></video>
+  <video id="video1" title="1" muted></video>
+  <video id="screen" title="screen" muted></video>
+  <video id="video2" title="2" muted></video>
+  <video id="video3" title="3" muted></video>
+  <video id="video4" title="4" muted></video>
+  <video id="video5" title="5" muted></video>
+  <video id="video6" title="6" muted></video>
+  <video id="video7" title="7" muted></video>
+</div>
+```
+
+### 2. Tạo custom SDK
+
+Tạo file `custom_sdk.ts` kế thừa từ OmiSDK:
+
+```
+import { OmiSDK } from '@mptransformation/omisdk';
+
+// Cấu hình video và audio IDs
+const remoteVideoIds = [
+    "video1", "video2", "video3", 
+    "video4", "video5", "video6"
+];
+
+const remoteAudios = [
+    "audio1", "audio2", "audio3", 
+    "audio4", "audio5", "audio6"
+];
+
+class SDK_MPT extends OmiSDK {}
+
+const sdk = new SDK_MPT();
+export default sdk;
+```
+
+### 3. Khởi tạo SDK
+
+```
+// Khởi tạo  init SDK ở tầng layout
+sdk.init({
+    targetElementId: "call-manager",
+    mode: "none",
+    theme: {
+        primaryColor: "#4CAF50",
+        secondaryColor: "#2196F3",
+        borderRadius: "8px",
+        bubblePosition: "bottom-right",
+    },
+    debug: true,
+    baseUrl: import.meta.env.BASE_URL, // MPT sẽ cung cấp URL
+    localVideoId: "local",
+    remoteVideoId: remoteVideoIds,
+    remoteAudioId: remoteAudios,
+    forceNew: false // true  phải login lại mỗi lần F5 và chỉ mở được 1 tab
+});
+```
+
+### 4. Đăng nhập
+
+#### Đăng nhập thông thường:
+
+```
+sdk.login({
+    tenantId: number,
+    username: string,
+    password: string,
+})
+.then(() => {
+    console.log("✅ Login thành công");
+})
+.catch(err => {
+    console.error("❌ Login failed:", err);
+});
+```
+
+#### Đăng nhập SSO:
+
+```
+sdk.loginSSO({
+    ssoToken: string,
+    organization: string,
+})
+.then(() => {
+    console.log("✅ SSO Login thành công");
+})
+.catch(err => {
+    console.error("❌ SSO Login failed:", err);
+});
+```
+
+### 5. Xử lý Events
+
+#### App Events:
+
+```
+sdk.on('AppEvent', (event: AppEvent) => {
+    switch(event.type) {
+        case AppEventType.CONNECTED:
+            // Hiện giao diện màn hình call
+            break;
+            
+        case AppEventType.TOKEN_EXPIRED:
+            // Hiện giao diện đăng nhập
+            break;
+            
+        case AppEventType.NETWORK_ERROR:
+        case AppEventType.DISCONNECTED:
+            // Thông báo mất mạng/kết nối và reload trang
+            break;
+            
+        case AppEventType.AUTO_CONNECT:
+            // Hiện overlay loading
+            break;
+    }
+});
+```
+
+#### Agent Status Events:
+
+```
+sdk.on('AgentStatusEvent', (status: AgentStatusEvent) => {
+    // Xử lý UI khi agent thay đổi trạng thái
+    console.log('Agent status changed:', status);
+});
+```
+
+#### Call Events:
+
+```
+let eventList = [];
+
+sdk.on('CallEvent', (event: CallEvent) => {
+    eventList.push(event.type);
+    
+    // Xử lý các loại event khác nhau
+    handleCallEvents(eventList, event);
+});
+
+function handleCallEvents(eventList: string[], event: CallEvent) {
+    // Cuộc gọi inbound
+    if (eventList.includes(CallEventType.CALL_CONNECTED)) {
+        // Cuộc gọi đã kết nối với agent
+    }
+    
+    if (eventList.includes(CallEventType.CALL_INCOMING)) {
+        // Cuộc gọi đổ vào - hiện 2 button từ chối/chấp nhận
+    }
+    
+    if (eventList.includes(CallEventType.CALL_ANSWERED)) {
+        // Agent hoặc khách hàng nhấc máy - hiện call controls
+    }
+    
+    if (eventList.includes(CallEventType.CALL_REJECTED)) {
+        // Từ chối cuộc gọi (check sessionID để tắt UI)
+    }
+    
+    if (eventList.includes(CallEventType.CALL_HANGUP)) {
+        // Kết thúc cuộc gọi (check sessionID để tắt UI)
+    }
+    
+    // Transfer events
+    if (eventList.includes(CallEventType.CALL_TRANSFER_ACCEPTED)) {
+        // Chuyển cuộc gọi thành công
+    }
+    
+    if (eventList.includes(CallEventType.CALL_TRANSFER_FAILED)) {
+        // Tham vấn thất bại - gọi refuseTransfer
+    }
+    
+    if (eventList.includes(CallEventType.CALL_TRANSFER_RINGING)) {
+        // Đang đổ chuông tham vấn
+    }
+    
+    if (eventList.includes(CallEventType.CALL_TRANSFER_ANSWER)) {
+        // Tham vấn đã nhấc máy
+    }
+    
+    // Cuộc gọi outbound
+    if (eventList.includes(CallEventType.CALL_CONNECTED) && 
+        eventList.includes(CallEventType.CALL_OUTGOING)) {
+        // Đang chờ khách hàng nhấc máy
+    }
+}
+```
+
+### 6. Thực hiện cuộc gọi
+
+```
+const result = await sdk.makeCall(phoneNumber, {
+    did: "180037784", // Đầu số gọi ra
+    extraInfo: JSON.stringify({ note: "test call" }) // Thông tin bổ sung
+});
+
+if (result.success) {
+    console.log('✅ Call initiated with session ID:', result);
+}
+```
+
+## 📚 API Reference
+
+### MPTSDK Class Methods
+
+#### Authentication
+
+- `init(SDKOptions)`: Khởi tạo SDK
+- `login(values: LoginRequest): Promise<SdkResponse>`: Đăng nhập Call Center
+- `logout(values: LoginRequest): Promise<SdkResponse>`: Đăng xuất Call Center
+- `loginSSO(values: LoginSSORequest): Promise<SdkResponse>`: Đăng nhập SSO
+
+#### Call Management
+
+- `makeCall(phoneNumber: string, options: CallOptions): Promise<SdkResponse>`: Gọi ra
+- `makeCallInternal(destination: string, extraInfo: CallOptions): Promise<SdkResponse>`: Gọi nội bộ
+- `answerCall(options: CallOptions): Promise<SdkResponse>`: Nhận cuộc gọi
+- `hangup(): Promise<SdkResponse>`: Kết thúc cuộc gọi
+- `rejectCall(): Promise<SdkResponse>`: Từ chối cuộc gọi
+
+#### Call Controls
+
+- `hold(): Promise<SdkResponse>`: Hold cuộc gọi
+- `unhold(): Promise<SdkResponse>`: Unhold cuộc gọi
+- `mute(): Promise<SdkResponse>`: Tắt mic
+- `unmute(): Promise<SdkResponse>`: Bật mic
+- `cameraOn(): Promise<SdkResponse>`: Mở camera
+- `cameraOff(): Promise<SdkResponse>`: Tắt camera
+
+#### Transfer & Consultation
+
+- `transfer(destination: string, destinationType: DestinationType, transferType: TransferType)`: Chuyển tiếp
+- `acceptTransfer()`: Chấp nhận chuyển cuộc gọi
+- `refuseTransfer()`: Thu hồi cuộc gọi
+
+#### Agent Management
+
+- `getCurrentStatus(): Promise<SdkResponse>`: Lấy trạng thái hiện tại
+- `getAgentStatus(): Promise<SdkResponse>`: Lấy danh sách trạng thái agent
+- `changeAgentStatus(reasonCodeId: number): Promise<SdkResponse>`: Thay đổi trạng thái
+- `getAgentQueues(): Promise<SdkResponse>`: Lấy danh sách queue của agent
+- `toggleAgentQueue(queueId: string, enable: boolean): Promise<SdkResponse>`: Bật/tắt agent trên queue
+
+#### UI Controls
+
+- `hideBubble()`: Ẩn UI bubble
+- `showBubble()`: Hiện UI bubble
+
+#### Information
+
+- `getInfo(): UserInfo`: Lấy thông tin agent
+- `getGroupAgents(): Promise<SdkResponse>`: Lấy tất cả queue trong hệ thống
+- `getAgentByExtension(queueExtension: string): Promise<SdkResponse>`: Lấy agent theo queue extension
+- `getAgentQueuesById(queueId: string): Promise<SdkResponse>`: Lấy agent theo queue ID
+
+## 📡 Events Reference
+
+### AppEventType
+
+| Event                     | Mô tả                                           |
+| :------------------------ | :---------------------------------------------- |
+| `READY`                   | SDK đã sẵn sàng, init thành công                |
+| `LOGGED_IN`               | Login thành công (có thể chưa kết nối tổng đài) |
+| `LOGGED_OUT`              | Logout thành công                               |
+| `TOKEN_EXPIRED`           | Token hết hạn hoặc thiếu thông tin user         |
+| `PERMISSION_DENIED`       | Không được cấp quyền mic/camera                 |
+| `NETWORK_ERROR`           | Mất mạng                                        |
+| `DISCONNECTED`            | Mất kết nối với tổng đài                        |
+| `DISCONNECTED_WEB_SOCKET` | Mất kết nối socket                              |
+| `CONNECTED_WEB_SOCKET`    | Kết nối socket thành công                       |
+| `CONNECTED`               | Đã kết nối tổng đài, login, có thông tin user   |
+| `AUTO_CONNECT`            | SDK đang tự động login và connect               |
+
+### CallEventType
+
+| Event                    | Mô tả                                |
+| :----------------------- | :----------------------------------- |
+| `CALL_CONNECTED`         | Cuộc gọi đã kết nối                  |
+| `CALL_INCOMING`          | Cuộc gọi đổ vào agent                |
+| `CALL_OUTGOING`          | Cuộc gọi ra đã kết nối, chờ nhấc máy |
+| `CALL_ANSWERED`          | Agent hoặc khách hàng nhấc máy       |
+| `CALL_REJECTED`          | Hủy cuộc gọi                         |
+| `CALL_HANGUP`            | Kết thúc cuộc gọi                    |
+| `CALL_HOLD`              | Hold cuộc gọi thành công             |
+| `CALL_UNHOLD`            | Unhold cuộc gọi thành công           |
+| `CALL_MUTE`              | Tắt mic thành công                   |
+| `CALL_UNMUTE`            | Bật mic thành công                   |
+| `CALL_REFUSE_TRANSFER`   | Thu hồi cuộc gọi thành công          |
+| `CALL_TRANSFER_ACCEPTED` | Chấp nhận chuyển cuộc gọi thành công |
+| `CALL_TRANSFER_FAILED`   | Tham vấn thất bại                    |
+| `CALL_TRANSFER_RINGING`  | Cuộc gọi tham vấn đang đổ chuông     |
+| `CALL_TRANSFER_ANSWER`   | Cuộc gọi tham vấn đã nhấc máy        |
+
+### CallEvent Data Structure
+
+```
+{
+    applicationId?: string,
+    channel: string,
+    direction: string,
+    extraInfo?: string,
+    hangupBy?: string,
+    name: string,
+    type: CallEventType,
+    senderId?: string,
+    sessionId: string,
+    statusCode?: string
+}
+```
+
+### AgentStatusEvent Structure
+
+```
+{
+    agentId: string,
+    tenantId: string,
+    agentName: string,
+    statusName: string,
+    changeTime: string,
+    reasonCode: string,
+    reasonCodeId: number,
+}
+```
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](https://mptvn-my.sharepoint.com/personal/hoangnt_mpt_com_vn/_layouts/15/LICENSE) file for details.
+
+Made with ❤️ by [MPT](https://mpt.com/)
